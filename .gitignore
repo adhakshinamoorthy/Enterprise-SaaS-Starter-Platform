@@ -1,7 +1,10 @@
 **/bin/
 **/obj/
-**/node_modules/
-**/dist/
+src/Web/node_modules/
+src/Web/dist/
 .env
-*.user
 .vs/
+.vscode/
+TestResults/
+*.user
+*.suo
