@@ -1,0 +1,10 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup><PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" /><ProjectReference Include="..\Tenant.Domain\Tenant.Domain.csproj" /><ProjectReference Include="..\BuildingBlocks\SharedKernel\SharedKernel.csproj" /><ProjectReference Include="..\BuildingBlocks\Tenanting\Tenanting.csproj" /><ProjectReference Include="..\BuildingBlocks\Audit\Audit.csproj" /><ProjectReference Include="..\BuildingBlocks\Messaging\Messaging.csproj" /></ItemGroup>
+
+</Project>

@@ -1,0 +1,12 @@
+using EnterpriseSaaS.Catalog.Domain;
+using EnterpriseSaaS.SharedKernel;
+using EnterpriseSaaS.Tenanting;
+using Microsoft.EntityFrameworkCore;
+namespace EnterpriseSaaS.Catalog.Infrastructure;
+
+public sealed class CatalogDbContext(DbContextOptions<CatalogDbContext> options) : DbContext(options), IUnitOfWork
+{ public DbSet<Tenant> Tenants => Set<Tenant>(); public DbSet<SubscriptionPlan> Plans => Set<SubscriptionPlan>(); public DbSet<FeatureRecord> Features => Set<FeatureRecord>(); public DbSet<LocalizationResource> LocalizationResources => Set<LocalizationResource>(); public DbSet<FormDefinition> Forms => Set<FormDefinition>(); protected override void OnModelCreating(ModelBuilder b) { b.Entity<Tenant>().HasIndex(x => x.Identifier).IsUnique(); b.Entity<Tenant>().Property(x => x.Identifier).HasMaxLength(100); b.Entity<Tenant>().Property(x => x.ConnectionString).HasMaxLength(2000); b.Entity<FeatureRecord>().HasIndex(x => new { x.Key, x.TenantId, x.UserId }); b.Entity<LocalizationResource>().HasIndex(x => new { x.TenantId, x.Culture, x.Key }).IsUnique(); b.Entity<FormDefinition>().HasIndex(x => new { x.Key, x.Version }).IsUnique(); } }
+public sealed class TenantRepository(CatalogDbContext db) : ITenantRepository
+{ public Task<Tenant?> GetAsync(Guid id, CancellationToken ct = default) => db.Tenants.FindAsync([id], ct).AsTask(); public Task<Tenant?> FindByIdentifierAsync(string identifier, CancellationToken ct = default) => db.Tenants.SingleOrDefaultAsync(x => x.Identifier == identifier.ToLower(), ct); public async Task<IReadOnlyList<Tenant>> ListAsync(CancellationToken ct = default) => await db.Tenants.AsNoTracking().OrderBy(x => x.Name).ToListAsync(ct); public async Task AddAsync(Tenant entity, CancellationToken ct = default) => await db.Tenants.AddAsync(entity, ct); public void Remove(Tenant entity) => db.Tenants.Remove(entity); }
+public sealed class CatalogTenantStore(CatalogDbContext db) : ITenantStore
+{ public async Task<TenantContext?> FindAsync(string identifier, CancellationToken ct) { var value = identifier.Trim(); var tenant = Guid.TryParse(value, out var id) ? await db.Tenants.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct) : await db.Tenants.AsNoTracking().SingleOrDefaultAsync(x => x.Identifier == value.ToLower(), ct); return tenant is null || tenant.Status != TenantStatus.Active ? null : new(tenant.Id, tenant.Identifier, tenant.ConnectionString); } }
