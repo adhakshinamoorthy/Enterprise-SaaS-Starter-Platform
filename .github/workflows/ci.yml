@@ -21,7 +21,7 @@ jobs:
     defaults: { run: { working-directory: src/Web } }
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with: { node-version: 24, cache: npm, cache-dependency-path: src/Web/package-lock.json }
       - run: npm ci
       - run: npm run build
