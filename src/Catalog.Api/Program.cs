@@ -20,9 +20,12 @@ builder.Services.AddRateLimiter(o => o.AddFixedWindowLimiter("api", x => { x.Per
 var app = builder.Build();
 app.UseExceptionHandler(); app.UseSerilogRequestLogging(); app.UseHttpsRedirection(); app.UseCors(); app.UseRateLimiter();
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
-var tenants = app.MapGroup("/api/tenants").RequireRateLimiting("api");
-tenants.MapGet("/", (ISender sender, CancellationToken ct) => sender.Send(new GetTenantsQuery(), ct));
-tenants.MapPost("/", async (CreateTenantCommand command, ISender sender, CancellationToken ct) => Results.Created("/api/tenants", await sender.Send(command, ct)));
+if (app.Environment.IsDevelopment())
+{
+    var tenants = app.MapGroup("/api/tenants").RequireRateLimiting("api");
+    tenants.MapGet("/", (ISender sender, CancellationToken ct) => sender.Send(new GetTenantsQuery(), ct));
+    tenants.MapPost("/", async (CreateTenantCommand command, ISender sender, CancellationToken ct) => Results.Created("/api/tenants", await sender.Send(command, ct)));
+}
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "catalog" }));
 app.Run();
 public partial class Program;

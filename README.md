@@ -2,6 +2,8 @@
 
 A local-first, cloud-ready multi-tenant SaaS foundation using .NET 10, C# 14, SQL Server, Redis, RabbitMQ, a secure BFF, and React. The code is split into Domain, Application, Infrastructure, and Presentation boundaries and treats tenant isolation as a platform invariant.
 
+This is an architecture foundation, not a production-ready product. Tenant isolation primitives are implemented; identity-provider login, broker processing, migrations, tenant provisioning automation, and live integration coverage remain explicit gaps. See [capability maturity](docs/architecture.md) and [verification scope](docs/verification.md).
+
 ## What is implemented
 
 - Catalog and tenant bounded contexts with CQRS handlers and repositories
@@ -62,7 +64,7 @@ Apply `scripts/init.sql`, create EF migrations for both contexts, and seed an ac
 
 ## Security notes
 
-Values committed in `appsettings.json` are local examples only. `.env` is ignored. Rotate passwords and signing keys before sharing an environment. The BFF owns browser cookies and CSRF; access tokens should stay server-side. Tenant IDs from requests are resolved against Catalog and never trusted as connection strings.
+Credentials are not committed. Use environment variables or a local secret store, and never place tenant connection strings in request data. The BFF owns browser cookies and CSRF; access tokens should stay server-side. The included configuration-backed tenant directory is for local development and should be replaced by a protected directory and secret-broker adapter in production.
 
 ## Verification
 

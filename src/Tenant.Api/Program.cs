@@ -13,13 +13,13 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog((context, config) => config.ReadFrom.Configuration(context.Configuration).WriteTo.Console());
-builder.Services.AddProblemDetails(); builder.Services.AddOpenApi(); builder.Services.AddHttpContextAccessor(); builder.Services.AddTenanting();
+builder.Services.AddProblemDetails(); builder.Services.AddOpenApi(); builder.Services.AddHttpContextAccessor(); builder.Services.AddTenanting(); builder.Services.AddSingleton<ITenantStore, ConfigurationTenantStore>();
 builder.Services.AddDbContext<TenantDbContext>((sp, o) => o.UseSqlServer(sp.GetRequiredService<ICurrentTenant>().ConnectionString));
 builder.Services.AddScoped<IProductRepository, ProductRepository>(); builder.Services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<TenantDbContext>());
 builder.Services.AddMediatR(c => c.RegisterServicesFromAssemblyContaining<CreateProductCommand>());
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o => { var jwt = builder.Configuration.GetSection("Jwt"); o.TokenValidationParameters = new() { ValidateIssuer = true, ValidateAudience = true, ValidateLifetime = true, ValidateIssuerSigningKey = true, ValidIssuer = jwt["Issuer"], ValidAudience = jwt["Audience"], IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt["SigningKey"]!)) }; });
 builder.Services.AddAuthorization(); builder.Services.AddRateLimiter(o => o.AddFixedWindowLimiter("tenant-api", x => { x.PermitLimit = 100; x.Window = TimeSpan.FromMinutes(1); x.QueueLimit = 0; }));
-var app = builder.Build(); app.UseExceptionHandler(); app.UseSerilogRequestLogging(); app.UseHttpsRedirection(); app.UseAuthentication(); app.UseMiddleware<TenantMiddleware>(); app.UseAuthorization(); app.UseRateLimiter(); if (app.Environment.IsDevelopment()) app.MapOpenApi();
+var app = builder.Build(); app.UseExceptionHandler(); app.UseSerilogRequestLogging(); app.UseHttpsRedirection(); app.UseAuthentication(); app.UseWhen(context => !context.Request.Path.StartsWithSegments("/health") && !context.Request.Path.StartsWithSegments("/openapi"), branch => branch.UseMiddleware<TenantMiddleware>()); app.UseAuthorization(); app.UseRateLimiter(); if (app.Environment.IsDevelopment()) app.MapOpenApi();
 var products = app.MapGroup("/api/products").RequireAuthorization().RequireRateLimiting("tenant-api"); products.MapGet("/", (ISender sender, CancellationToken ct) => sender.Send(new GetProductsQuery(), ct)); products.MapPost("/", async (CreateProductCommand command, ISender sender, CancellationToken ct) => Results.Created("/api/products", await sender.Send(command, ct)));
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "tenant" })); app.Run();
 public partial class Program;

@@ -1,0 +1,27 @@
+name: ci
+on:
+  push: { branches: [main] }
+  pull_request:
+permissions: { contents: read }
+jobs:
+  dotnet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with: { dotnet-version: 10.0.x }
+      - run: dotnet restore EnterpriseSaaS.slnx
+      - run: dotnet format EnterpriseSaaS.slnx --verify-no-changes --no-restore
+      - run: dotnet build EnterpriseSaaS.slnx -c Release --no-restore
+      - run: dotnet test EnterpriseSaaS.slnx -c Release --no-build --no-restore
+      - run: dotnet list EnterpriseSaaS.slnx package --vulnerable --include-transitive
+      - run: docker compose --env-file .env.example config --quiet
+  web:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: src/Web } }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with: { node-version: 24, cache: npm, cache-dependency-path: src/Web/package-lock.json }
+      - run: npm ci
+      - run: npm run build

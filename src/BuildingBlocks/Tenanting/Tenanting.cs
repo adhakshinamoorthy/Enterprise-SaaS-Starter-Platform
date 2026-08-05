@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EnterpriseSaaS.Tenanting;
@@ -16,6 +17,23 @@ public sealed class CurrentTenant(ITenantAccessor accessor) : ICurrentTenant
     public string ConnectionString => Value.ConnectionString ?? throw new InvalidOperationException("Tenant database is not provisioned.");
 }
 public interface ITenantStore { Task<TenantContext?> FindAsync(string identifier, CancellationToken cancellationToken); }
+public sealed class ConfigurationTenantStore(IConfiguration configuration) : ITenantStore
+{
+    public Task<TenantContext?> FindAsync(string identifier, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        foreach (var section in configuration.GetSection("Tenants").GetChildren())
+        {
+            if (!Guid.TryParse(section["Id"], out var id)) continue;
+            var configuredIdentifier = section["Identifier"];
+            var connectionString = section["ConnectionString"];
+            if (!string.IsNullOrWhiteSpace(configuredIdentifier) && !string.IsNullOrWhiteSpace(connectionString)
+                && (identifier.Equals(configuredIdentifier, StringComparison.OrdinalIgnoreCase) || identifier.Equals(id.ToString(), StringComparison.OrdinalIgnoreCase)))
+                return Task.FromResult<TenantContext?>(new(id, configuredIdentifier, connectionString));
+        }
+        return Task.FromResult<TenantContext?>(null);
+    }
+}
 public interface ITenantResolver { Task<TenantContext?> ResolveAsync(HttpContext context, CancellationToken cancellationToken); }
 public sealed class TenantResolver(ITenantStore store) : ITenantResolver
 {
